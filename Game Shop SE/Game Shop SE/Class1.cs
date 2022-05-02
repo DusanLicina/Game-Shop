@@ -38,7 +38,22 @@ namespace Game_Shop_SE
             return Math.Round(TaxModifier / 100 * Price + Price, 2);
         }
 
-        public void PrintToyPriceAndRealPrice(double TaxModifier) {
+        public void PrintToyPriceAndRealPrice(double TaxModifier,double GlobalDiscoount,List<int> UPCSpecificDiscountList, List<double> SpecificDiscountAmount) {
+            int i = 0;
+            double SpecificDiscount = 0;
+            foreach (int iter in UPCSpecificDiscountList) {
+                if (UPC == iter) {
+                    break;
+                }
+                i++;
+            }
+            if (i < SpecificDiscountAmount.Count) {
+                SpecificDiscount = SpecificDiscountAmount[i];
+            }
+            double FullDiscount = 0;
+            if (GlobalDiscoount + SpecificDiscount > 100) { FullDiscount = 100; }
+            else { FullDiscount = GlobalDiscoount + SpecificDiscount; }
+
             Console.Write(Name," :Cena ", Price, " din pre poreza i ", CalculateTheRealPrice(TaxModifier), "din nakon ", TaxModifier, "% poreza");
             Console.Write(" :Cena ");
             Console.Write(Price);
@@ -47,6 +62,20 @@ namespace Game_Shop_SE
             Console.Write(" din nakon ");
             Console.Write(TaxModifier);
             Console.Write("% poreza");
+            if (FullDiscount != 0) {
+                double discountAmount = Math.Round(CalculateTheRealPrice(TaxModifier) * FullDiscount / 100, 2);
+                double RealPrice = CalculateTheRealPrice(TaxModifier) - discountAmount;
+                string RealPriceString = RealPrice.ToString();
+                Console.Write(" i ");
+                Console.Write(RealPriceString, " nakon obracunatog popusta od ", FullDiscount,"%");
+                Console.Write(" nakon obracunatog popusta od ");
+                Console.Write(FullDiscount);
+                Console.Write("%");
+                Console.WriteLine();
+                Console.Write("Ustedjen novac je ");
+                Console.Write(discountAmount);
+                Console.Write(" din");
+            }
             Console.WriteLine();
         }
 
@@ -65,12 +94,18 @@ namespace Game_Shop_SE
         private string Name;
         private double Tax;
         private List<Toy> Toys;
+        private double GlobalDiscount;
+        private List<int> ToysUPCWithBonusDiscount;
+        private List<double> ToysWithBonusDiscountAmount;
 
         public ToyStore(string name)
         {
             Name = name;
             Tax = 20;
             Toys = new List<Toy>();
+            GlobalDiscount = 0;
+            ToysUPCWithBonusDiscount = new List<int>();
+            ToysWithBonusDiscountAmount = new List<double>();
         }
 
         public string GetName()
@@ -83,14 +118,35 @@ namespace Game_Shop_SE
             return Tax;
         }
 
-        public void SetTax(double TaxAmount) {
-            Math.Round(TaxAmount, 2);
-            Tax = TaxAmount;
+        public double GetGlobalDiscount()
+        {
+            return GlobalDiscount;
         }
 
         public List<Toy> GetToys()
         {
             return Toys;
+        }
+
+        public List<int> GetToysUPCWithBonusDiscount()
+        {
+            return ToysUPCWithBonusDiscount;
+        }
+
+        public List<double> GetToysWithBonusDiscountAmount()
+        {
+            return ToysWithBonusDiscountAmount;
+        }
+
+        public void SetTax(double TaxAmount) {
+            Math.Round(TaxAmount, 2);
+            Tax = TaxAmount;
+        }
+
+        public void SetGlobalDiscount(double DiscountAmount)
+        {
+            Math.Round(DiscountAmount, 2);
+            GlobalDiscount = DiscountAmount;
         }
 
         public void AddToy(string ToyName, int ToyUPC,double ToyPrice) {
@@ -100,7 +156,7 @@ namespace Game_Shop_SE
         public void PrintToys() {
             foreach (Toy temp in Toys)
             {
-                temp.PrintToyPriceAndRealPrice(Tax);
+                temp.PrintToyPriceAndRealPrice(Tax,GlobalDiscount,ToysUPCWithBonusDiscount,ToysWithBonusDiscountAmount);
             }
         }
             static public void Main(String[] args) {
@@ -120,8 +176,9 @@ namespace Game_Shop_SE
                 }
             }
             ToyStore Store = new ToyStore(TempName);
+            //
             Console.WriteLine("Unesite porez za obracunavanmje igracaka");
-            Console.WriteLine("Porez mora biti realna vrednost");
+            Console.WriteLine("Porez mora biti pozitivna realna vrednost");
             flag = true;
             TempName = null;
             double TempTax = 20;
@@ -129,14 +186,14 @@ namespace Game_Shop_SE
             {
                 TempName = Console.ReadLine();
                 bool doubleChecker = double.TryParse(TempName, out TempTax);
-                if (doubleChecker)
+                if (doubleChecker & TempTax>=0)
                 {
                     flag = false;
                 }
                 else if (TempName.EndsWith("%")) {
                     TempName = TempName.Remove(TempName.Length - 1);
                     doubleChecker = double.TryParse(TempName, out TempTax);
-                    if (doubleChecker)
+                    if (doubleChecker & TempTax>=0)
                     {
                         flag = false;
                     }
@@ -144,10 +201,41 @@ namespace Game_Shop_SE
                 if (flag)
                 {
                     Console.WriteLine("Nekorektan unos, molim Vas unesite ponovo");
-                    Console.WriteLine("Porez mora biti realan broj");
+                    Console.WriteLine("Porez mora biti pozitivan realan broj");
                 }
             }
             Store.SetTax(TempTax);
+            //
+            Console.WriteLine("Unesite globalni popust koji se obracunava za sve igracke");
+            Console.WriteLine("Popust mora biti pozitivna realna vrednost manja od 100");
+            flag = true;
+            TempName = null;
+            double TempGlobalDiscount = 0;
+            while (flag)
+            {
+                TempName = Console.ReadLine();
+                bool doubleChecker = double.TryParse(TempName, out TempGlobalDiscount);
+                if (doubleChecker & TempGlobalDiscount >= 0 & TempGlobalDiscount <= 100)
+                {
+                    flag = false;
+                }
+                else if (TempName.EndsWith("%"))
+                {
+                    TempName = TempName.Remove(TempName.Length - 1);
+                    doubleChecker = double.TryParse(TempName, out TempGlobalDiscount);
+                    if (doubleChecker & TempGlobalDiscount >= 0 & TempGlobalDiscount <= 100)
+                    {
+                        flag = false;
+                    }
+                }
+                if (flag)
+                {
+                    Console.WriteLine("Nekorektan unos, molim Vas unesite ponovo");
+                    Console.WriteLine("Popust mora biti pozitivan realan broj manji od 100");
+                }
+            }
+            Store.SetGlobalDiscount(TempGlobalDiscount);
+            //
             Console.WriteLine("Unesite igracke u prodavnicu tako sto cete uneti ime zatim bar kod i na kraju cenu igracke");
             Console.WriteLine("Ukoliko za ime unesete Stop prekinucete unos igracaka");
             flag = true;
@@ -178,40 +266,127 @@ namespace Game_Shop_SE
                 while (flag)
                 {
                     Console.WriteLine("Bar kod:");
-                    Console.WriteLine("Bar kod mora biti ceo broj");
+                    Console.WriteLine("Bar kod mora biti pozitivan ceo broj");
                     TempName = Console.ReadLine();
                     bool intChecker = int.TryParse(TempName, out TempToyUpc);
-                    if (intChecker)
+                    if (intChecker & TempToyUpc>=0)
                     {
                         flag = false;
                     }
                     if (flag)
                     {
                         Console.WriteLine("Nekorektan unos, molim Vas unesite ponovo");
-                        Console.WriteLine("Bar kod mora biti ceo broj");
+                        Console.WriteLine("Bar kod mora biti pozitivan ceo broj");
                     }
                 }
                 flag = true;
                 while (flag)
                 {
                     Console.WriteLine("Cena:");
-                    Console.WriteLine("Cena mora biti realan broj");
+                    Console.WriteLine("Cena mora biti pozitivan realan broj");
                     TempName = Console.ReadLine();
                     bool doubleChecker = double.TryParse(TempName, out TempToyPrice);
-                    if (doubleChecker)
+                    if (doubleChecker & TempToyPrice>=0)
                     {
                         flag = false;
                     }
                     if (flag)
                     {
                         Console.WriteLine("Nekorektan unos, molim Vas unesite ponovo");
-                        Console.WriteLine("Cena mora biti realan broj");
+                        Console.WriteLine("Cena mora biti pozitivan realan broj");
                     }
                 }
                 Store.AddToy(TempToyName, TempToyUpc, TempToyPrice);
                 Console.WriteLine("Unesite sledecu igracku ili unosom imena Stop zaustavite unos");
                 flag = true;
             }
+            //
+            Console.WriteLine("Unesite igracke na koje ce se obracunavati dodatni popust tako sto cete odabrati redni broj igracke a zatim iznos dodatnog popusta");
+            Console.WriteLine("Ukoliko zelite da obustavite unos igracaka sa popustom unesite broj 0 za redni broj");
+            int iter = 1;
+            foreach (Toy TempToy in Store.GetToys()) {
+                Console.Write(iter);
+                Console.Write(". ");
+                Console.Write(TempToy.GetName());
+                Console.Write(" Bar kod: ");
+                Console.Write(TempToy.GetUPC());
+                Console.WriteLine();
+                iter++;
+            }
+            flag = true;
+            TempName = null;
+            int TempToyDiscountUpc = 0;
+            double TempToyDiscount = 0;
+            while (true)
+            {
+                Console.WriteLine("Unos igracke");
+                if (TempName == "Stop" | TempName == "stop") { break; }
+                TempToyName = TempName;
+                flag = true;
+                while (flag)
+                {
+                    Console.WriteLine("Redni broj:");
+                    Console.WriteLine("Redni broj mora biti neki od gorenavedenih igracaka");
+                    TempName = Console.ReadLine();
+                    bool intChecker = int.TryParse(TempName, out TempToyDiscountUpc);
+                    if (intChecker & TempToyDiscountUpc >= 0 & TempToyDiscountUpc<iter)
+                    {
+                        flag = false;
+                    }
+                    if (flag)
+                    {
+                        Console.WriteLine("Nekorektan unos, molim Vas unesite ponovo");
+                        Console.WriteLine("Redni broj mora biti neki od gorenavedenih igracaka");
+                    }
+                }
+                if (TempToyDiscountUpc == 0) { break; }
+                TempToyDiscountUpc = Store.GetToys()[TempToyDiscountUpc - 1].GetUPC();
+                int index = -1;
+                if (Store.GetToysUPCWithBonusDiscount().Contains(TempToyDiscountUpc))
+                {
+                    index = Store.GetToysUPCWithBonusDiscount().IndexOf(TempToyDiscountUpc);
+                }
+                else
+                {
+                    Store.GetToysUPCWithBonusDiscount().Add(TempToyDiscountUpc);
+                }
+                Console.WriteLine("Popust:");
+                Console.WriteLine("Popust mora biti pozitivan realan broj manji od 100");
+                flag = true;
+                while (flag)
+                {
+                    TempName = Console.ReadLine();
+                    bool doubleChecker = double.TryParse(TempName, out TempToyDiscount);
+                    if (doubleChecker & TempToyDiscount >= 0 & TempToyDiscount <= 100)
+                    {
+                        flag = false;
+                    }
+                    else if (TempName.EndsWith("%"))
+                    {
+                        TempName = TempName.Remove(TempName.Length - 1);
+                        doubleChecker = double.TryParse(TempName, out TempToyDiscount);
+                        if (doubleChecker & TempToyDiscount >= 0 & TempToyDiscount <= 100)
+                        {
+                            flag = false;
+                        }
+                    }
+                    if (flag)
+                    {
+                        Console.WriteLine("Nekorektan unos, molim Vas unesite ponovo");
+                        Console.WriteLine("Popust mora biti pozitivan realan broj manji od 100");
+                    }
+                }
+                if (index != 0)
+                {
+                    Store.GetToysWithBonusDiscountAmount().Add(TempToyDiscount);
+                }
+                else {
+                    Store.GetToysWithBonusDiscountAmount()[index] = TempToyDiscount;
+                }
+                Console.WriteLine("Unesite sledecu igracku ili unosom 0 zaustavite unos");
+                flag = true;
+            }
+            //
             Store.PrintToys();
             TempName = Console.ReadLine();
 
